@@ -12,7 +12,7 @@ export default function App() {
     openaiApiKey: '',
     provider: 'google',
     llmModel: 'gemini-2.5-flash',
-    model: 'imagen-3.0-generate-002',
+    model: 'gemini-3-pro-image-preview',
     aspectRatio: '16:9',
     customAspect: '',
     selectedCharacterId: null,

@@ -35,10 +35,11 @@ const IMAGE_MODELS_BY_PROVIDER = {
     { label: 'その他（カスタム）', value: '__custom__' },
   ],
   google: [
+    { label: 'Nano Banana Pro（Gemini 3 Pro）', value: 'gemini-3-pro-image-preview' },
+    { label: 'Nano Banana 2（Gemini 3.1 Flash）', value: 'gemini-3.1-flash-image-preview' },
+    { label: 'Nano Banana（Gemini 2.5 Flash）', value: 'gemini-2.5-flash-image' },
     { label: 'Imagen 3', value: 'imagen-3.0-generate-002' },
     { label: 'Imagen 3 Fast', value: 'imagen-3.0-fast-generate-001' },
-    { label: 'Nano Banana Pro 2', value: 'nanobanana-pro-2' },
-    { label: 'Gemini 2.0 Flash（画像生成）', value: 'gemini-2.0-flash-exp' },
     { label: 'その他（カスタム）', value: '__custom__' },
   ],
 }
