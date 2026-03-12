@@ -129,10 +129,14 @@ export default function Sidebar({ config, onConfigChange }) {
     e.target.value = ''
   }
 
-  // キャラクターが1つだけあって未選択なら自動選択
+  // 選択中のキャラが存在しない場合（削除された等）、未選択に戻す
+  // 未選択かつキャラが存在する場合は自動選択しない（ユーザーに選ばせる）
   useEffect(() => {
-    if (characters.length > 0 && !config.selectedCharacterId) {
-      onConfigChange({ selectedCharacterId: characters[0].id })
+    if (config.selectedCharacterId && characters.length > 0) {
+      const exists = characters.some(c => c.id === config.selectedCharacterId)
+      if (!exists) {
+        onConfigChange({ selectedCharacterId: null })
+      }
     }
   }, [characters])
 
@@ -140,6 +144,9 @@ export default function Sidebar({ config, onConfigChange }) {
     await deleteCharacterImage(id)
     const updated = await getAllCharacterImages()
     setCharacters(updated)
+    if (config.selectedCharacterId === id) {
+      onConfigChange({ selectedCharacterId: null })
+    }
   }
 
   const update = (key, value) => onConfigChange({ [key]: value })
@@ -338,6 +345,19 @@ export default function Sidebar({ config, onConfigChange }) {
             キャラクター画像
           </label>
 
+          {/* 選択状態の表示 */}
+          {characters.length > 0 && (
+            <div className={`mb-2 px-2.5 py-1.5 rounded-lg text-[11px] ${
+              config.selectedCharacterId
+                ? 'bg-green-500/10 border border-green-500/20 text-green-300'
+                : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-300'
+            }`}>
+              {config.selectedCharacterId
+                ? `✓ ${characters.find(c => c.id === config.selectedCharacterId)?.name || ''} を使用`
+                : 'キャラクター未選択 — 下から選んでください'}
+            </div>
+          )}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -351,9 +371,9 @@ export default function Sidebar({ config, onConfigChange }) {
             className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-white/20 hover:border-violet-400/50 hover:bg-white/5 transition text-sm text-white/60 hover:text-violet-300"
           >
             <Upload size={14} />
-            画像をアップロード
+            画像を追加
           </button>
-          <p className="text-[10px] text-white/30 mt-1">IndexedDBに永続保存されます</p>
+          <p className="text-[10px] text-white/30 mt-1">IndexedDBに永続保存 / クリックで選択切替</p>
 
           {/* 保存済みキャラクター一覧 */}
           {characters.length > 0 && (
@@ -366,20 +386,20 @@ export default function Sidebar({ config, onConfigChange }) {
                   className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition ${
                     isSelected
                       ? 'ring-2 ring-green-400 bg-green-500/15'
-                      : 'glass-dark hover:bg-white/5'
+                      : 'glass-dark hover:bg-white/10 border border-transparent hover:border-white/10'
                   }`}
                   onClick={() => update('selectedCharacterId', isSelected ? null : char.id)}
                 >
                   <img
                     src={char.dataUrl}
                     alt={char.name}
-                    className="w-10 h-10 rounded-lg object-cover"
+                    className={`w-12 h-12 rounded-lg object-cover transition ${isSelected ? 'ring-1 ring-green-400' : 'opacity-60'}`}
                   />
                   <div className="flex-1 min-w-0">
-                    <span className="text-xs text-white/70 block truncate">{char.name}</span>
-                    {isSelected && (
-                      <span className="text-[10px] text-green-300">生成に使用中</span>
-                    )}
+                    <span className={`text-xs block truncate ${isSelected ? 'text-white' : 'text-white/50'}`}>{char.name}</span>
+                    <span className={`text-[10px] ${isSelected ? 'text-green-300 font-medium' : 'text-white/30'}`}>
+                      {isSelected ? '● 使用中' : 'クリックで選択'}
+                    </span>
                   </div>
                   <button
                     onClick={(e) => {
