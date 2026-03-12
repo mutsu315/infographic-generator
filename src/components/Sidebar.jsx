@@ -15,7 +15,20 @@ const PROVIDERS = [
   { label: 'OpenAI (GPT + DALL-E)', value: 'openai' },
 ]
 
-const MODELS_BY_PROVIDER = {
+const LLM_MODELS_BY_PROVIDER = {
+  openai: [
+    { label: 'GPT-4o', value: 'gpt-4o' },
+    { label: 'GPT-4o mini', value: 'gpt-4o-mini' },
+    { label: 'GPT-4.1', value: 'gpt-4.1' },
+  ],
+  google: [
+    { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash-preview-04-17' },
+    { label: 'Gemini 2.0 Flash Lite', value: 'gemini-2.0-flash-lite' },
+    { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro-preview-05-06' },
+  ],
+}
+
+const IMAGE_MODELS_BY_PROVIDER = {
   openai: [
     { label: 'DALL-E 3', value: 'dall-e-3' },
     { label: 'DALL-E 2', value: 'dall-e-2' },
@@ -58,6 +71,9 @@ export default function Sidebar({ config, onConfigChange }) {
     if (config.model) localStorage.setItem('ig-model', config.model)
   }, [config.model])
   useEffect(() => {
+    if (config.llmModel) localStorage.setItem('ig-llm-model', config.llmModel)
+  }, [config.llmModel])
+  useEffect(() => {
     if (config.provider) localStorage.setItem('ig-provider', config.provider)
   }, [config.provider])
 
@@ -67,20 +83,23 @@ export default function Sidebar({ config, onConfigChange }) {
     const savedGoogleKey = localStorage.getItem('ig-api-key-google') || ''
     const savedOpenaiKey = localStorage.getItem('ig-api-key-openai') || ''
     const savedModel = localStorage.getItem('ig-model')
+    const savedLlmModel = localStorage.getItem('ig-llm-model')
     onConfigChange({
       googleApiKey: savedGoogleKey,
       openaiApiKey: savedOpenaiKey,
       model: savedModel || config.model,
+      llmModel: savedLlmModel || config.llmModel,
       provider: savedProvider,
     })
   }, [])
 
   // プロバイダー変更時にモデルをリセット
   const handleProviderChange = (newProvider) => {
-    const firstModel = MODELS_BY_PROVIDER[newProvider]?.[0]?.value || ''
-    setModelSelectValue(firstModel)
+    const firstImageModel = IMAGE_MODELS_BY_PROVIDER[newProvider]?.[0]?.value || ''
+    const firstLlmModel = LLM_MODELS_BY_PROVIDER[newProvider]?.[0]?.value || ''
+    setModelSelectValue(firstImageModel)
     setCustomModelName('')
-    onConfigChange({ provider: newProvider, model: firstModel })
+    onConfigChange({ provider: newProvider, model: firstImageModel, llmModel: firstLlmModel })
   }
 
   const handleFileUpload = async (e) => {
@@ -198,7 +217,24 @@ export default function Sidebar({ config, onConfigChange }) {
           </p>
         </section>
 
-        {/* モデル選択 */}
+        {/* LLMモデル選択（プロンプト生成用） */}
+        <section>
+          <label className="flex items-center gap-2 text-xs font-medium text-violet-300 mb-2">
+            <Cpu size={14} />
+            LLMモデル（プロンプト生成）
+          </label>
+          <select
+            value={config.llmModel}
+            onChange={(e) => update('llmModel', e.target.value)}
+            className="w-full px-3 py-2 rounded-lg glass-dark text-sm text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition appearance-none cursor-pointer"
+          >
+            {(LLM_MODELS_BY_PROVIDER[config.provider] || []).map(m => (
+              <option key={m.value} value={m.value} className="bg-gray-900">{m.label}</option>
+            ))}
+          </select>
+        </section>
+
+        {/* 画像生成モデル選択 */}
         <section>
           <label className="flex items-center gap-2 text-xs font-medium text-violet-300 mb-2">
             <Cpu size={14} />
@@ -216,7 +252,7 @@ export default function Sidebar({ config, onConfigChange }) {
             }}
             className="w-full px-3 py-2 rounded-lg glass-dark text-sm text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition appearance-none cursor-pointer"
           >
-            {(MODELS_BY_PROVIDER[config.provider] || []).map(m => (
+            {(IMAGE_MODELS_BY_PROVIDER[config.provider] || []).map(m => (
               <option key={m.value} value={m.value} className="bg-gray-900">{m.label}</option>
             ))}
           </select>

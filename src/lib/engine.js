@@ -106,7 +106,7 @@ export function detectProvider(apiKey) {
 
 // ── OpenAI API ───────────────────────────────────────────
 
-async function openaiGenerateYaml(apiKey, section, characterDescription, aspectRatio, signal) {
+async function openaiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, signal) {
   const { systemPrompt, userMessage } = buildYamlPromptRequest(section, characterDescription, aspectRatio)
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -116,7 +116,7 @@ async function openaiGenerateYaml(apiKey, section, characterDescription, aspectR
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: llmModel || 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage },
@@ -175,11 +175,10 @@ async function openaiGenerateImage(apiKey, prompt, aspectRatio, model, signal) {
 
 // ── Google Gemini + Imagen API ───────────────────────────
 
-async function geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, model, signal) {
+async function geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, signal) {
   const { systemPrompt, userMessage } = buildYamlPromptRequest(section, characterDescription, aspectRatio)
 
-  // Gemini API の generateContent エンドポイント
-  const geminiModel = 'gemini-2.0-flash-lite'
+  const geminiModel = llmModel || 'gemini-2.0-flash-lite'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`
 
   const res = await fetch(url, {
@@ -308,6 +307,7 @@ export async function runPipeline({
   script,
   aspectRatio = '16:9',
   model = '',
+  llmModel = '',
   provider = '',
   characterDescription = '',
   abortController,
@@ -342,9 +342,9 @@ export async function runPipeline({
     let yamlPrompt
     try {
       if (detectedProvider === 'google') {
-        yamlPrompt = await geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, model, signal)
+        yamlPrompt = await geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, signal)
       } else {
-        yamlPrompt = await openaiGenerateYaml(apiKey, section, characterDescription, aspectRatio, signal)
+        yamlPrompt = await openaiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, signal)
       }
     } catch (err) {
       if (err.name === 'AbortError') break
