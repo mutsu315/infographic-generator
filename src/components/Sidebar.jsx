@@ -113,10 +113,19 @@ export default function Sidebar({ config, onConfigChange }) {
       await saveCharacterImage(id, file.name, dataUrl)
       const updated = await getAllCharacterImages()
       setCharacters(updated)
+      // アップロード直後に自動選択
+      onConfigChange({ selectedCharacterId: id })
     }
     reader.readAsDataURL(file)
     e.target.value = ''
   }
+
+  // キャラクターが1つだけあって未選択なら自動選択
+  useEffect(() => {
+    if (characters.length > 0 && !config.selectedCharacterId) {
+      onConfigChange({ selectedCharacterId: characters[0].id })
+    }
+  }, [characters])
 
   const handleDeleteCharacter = async (id) => {
     await deleteCharacterImage(id)
@@ -340,22 +349,29 @@ export default function Sidebar({ config, onConfigChange }) {
           {/* 保存済みキャラクター一覧 */}
           {characters.length > 0 && (
             <div className="mt-3 space-y-2">
-              {characters.map((char) => (
+              {characters.map((char) => {
+                const isSelected = config.selectedCharacterId === char.id
+                return (
                 <div
                   key={char.id}
-                  className={`flex items-center gap-2 p-2 rounded-lg glass-dark cursor-pointer transition ${
-                    config.selectedCharacterId === char.id
-                      ? 'ring-2 ring-violet-500/60'
-                      : 'hover:bg-white/5'
+                  className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition ${
+                    isSelected
+                      ? 'ring-2 ring-green-400 bg-green-500/15'
+                      : 'glass-dark hover:bg-white/5'
                   }`}
-                  onClick={() => update('selectedCharacterId', char.id === config.selectedCharacterId ? null : char.id)}
+                  onClick={() => update('selectedCharacterId', isSelected ? null : char.id)}
                 >
                   <img
                     src={char.dataUrl}
                     alt={char.name}
                     className="w-10 h-10 rounded-lg object-cover"
                   />
-                  <span className="text-xs text-white/70 flex-1 truncate">{char.name}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-white/70 block truncate">{char.name}</span>
+                    {isSelected && (
+                      <span className="text-[10px] text-green-300">生成に使用中</span>
+                    )}
+                  </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -367,7 +383,8 @@ export default function Sidebar({ config, onConfigChange }) {
                     <Trash2 size={12} className="text-red-400" />
                   </button>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>
