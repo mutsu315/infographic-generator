@@ -76,6 +76,13 @@ export default function Sidebar({ config, onConfigChange }) {
   useEffect(() => {
     if (config.provider) localStorage.setItem('ig-provider', config.provider)
   }, [config.provider])
+  useEffect(() => {
+    if (config.selectedCharacterId) {
+      localStorage.setItem('ig-selected-char', config.selectedCharacterId)
+    } else if (config.selectedCharacterId === null) {
+      localStorage.removeItem('ig-selected-char')
+    }
+  }, [config.selectedCharacterId])
 
   // 初回ロード時にlocalStorageから設定を復元
   useEffect(() => {
@@ -84,12 +91,14 @@ export default function Sidebar({ config, onConfigChange }) {
     const savedOpenaiKey = localStorage.getItem('ig-api-key-openai') || ''
     const savedModel = localStorage.getItem('ig-model')
     const savedLlmModel = localStorage.getItem('ig-llm-model')
+    const savedCharId = localStorage.getItem('ig-selected-char')
     onConfigChange({
       googleApiKey: savedGoogleKey,
       openaiApiKey: savedOpenaiKey,
       model: savedModel || config.model,
       llmModel: savedLlmModel || config.llmModel,
       provider: savedProvider,
+      selectedCharacterId: savedCharId || null,
     })
   }, [])
 
