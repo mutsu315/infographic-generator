@@ -11,7 +11,7 @@ export default function App() {
     googleApiKey: '',
     openaiApiKey: '',
     provider: 'google',
-    llmModel: 'gemini-2.5-flash-preview-04-17',
+    llmModel: 'gemini-2.5-flash',
     model: 'imagen-3.0-generate-002',
     aspectRatio: '16:9',
     customAspect: '',
