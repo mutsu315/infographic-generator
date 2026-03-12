@@ -45,12 +45,13 @@ export default function Sidebar({ config, onConfigChange }) {
     getAllCharacterImages().then(setCharacters).catch(console.error)
   }, [])
 
-  // APIキーをプロバイダーごとにlocalStorageに保存
+  // APIキーをそれぞれlocalStorageに保存
   useEffect(() => {
-    if (config.apiKey && config.provider) {
-      localStorage.setItem(`ig-api-key-${config.provider}`, config.apiKey)
-    }
-  }, [config.apiKey, config.provider])
+    if (config.googleApiKey) localStorage.setItem('ig-api-key-google', config.googleApiKey)
+  }, [config.googleApiKey])
+  useEffect(() => {
+    if (config.openaiApiKey) localStorage.setItem('ig-api-key-openai', config.openaiApiKey)
+  }, [config.openaiApiKey])
 
   // モデル・プロバイダー選択をlocalStorageに保存
   useEffect(() => {
@@ -63,22 +64,23 @@ export default function Sidebar({ config, onConfigChange }) {
   // 初回ロード時にlocalStorageから設定を復元
   useEffect(() => {
     const savedProvider = localStorage.getItem('ig-provider') || config.provider
-    const savedKey = localStorage.getItem(`ig-api-key-${savedProvider}`) || ''
+    const savedGoogleKey = localStorage.getItem('ig-api-key-google') || ''
+    const savedOpenaiKey = localStorage.getItem('ig-api-key-openai') || ''
     const savedModel = localStorage.getItem('ig-model')
     onConfigChange({
-      apiKey: savedKey || config.apiKey,
+      googleApiKey: savedGoogleKey,
+      openaiApiKey: savedOpenaiKey,
       model: savedModel || config.model,
       provider: savedProvider,
     })
   }, [])
 
-  // プロバイダー変更時にモデルをリセット＆保存済みAPIキーを復元
+  // プロバイダー変更時にモデルをリセット
   const handleProviderChange = (newProvider) => {
     const firstModel = MODELS_BY_PROVIDER[newProvider]?.[0]?.value || ''
-    const savedKey = localStorage.getItem(`ig-api-key-${newProvider}`) || ''
     setModelSelectValue(firstModel)
     setCustomModelName('')
-    onConfigChange({ provider: newProvider, model: firstModel, apiKey: savedKey })
+    onConfigChange({ provider: newProvider, model: firstModel })
   }
 
   const handleFileUpload = async (e) => {
@@ -139,20 +141,41 @@ export default function Sidebar({ config, onConfigChange }) {
       </div>
 
       <div className="p-4 space-y-5 flex-1">
-        {/* APIキー */}
+        {/* Google APIキー */}
         <section>
           <label className="flex items-center gap-2 text-xs font-medium text-violet-300 mb-2">
             <Key size={14} />
-            APIキー
+            Google APIキー
+            {config.provider === 'google' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">使用中</span>
+            )}
           </label>
           <input
             type="password"
-            value={config.apiKey}
-            onChange={(e) => update('apiKey', e.target.value)}
-            placeholder={config.provider === 'google' ? 'AIza...' : 'sk-...'}
+            value={config.googleApiKey}
+            onChange={(e) => update('googleApiKey', e.target.value)}
+            placeholder="AIza..."
             className="w-full px-3 py-2 rounded-lg glass-dark text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
           />
-          <p className="text-[10px] text-white/30 mt-1">ブラウザに安全に保存されます</p>
+        </section>
+
+        {/* OpenAI APIキー */}
+        <section>
+          <label className="flex items-center gap-2 text-xs font-medium text-violet-300 mb-2">
+            <Key size={14} />
+            OpenAI APIキー
+            {config.provider === 'openai' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-300">使用中</span>
+            )}
+          </label>
+          <input
+            type="password"
+            value={config.openaiApiKey}
+            onChange={(e) => update('openaiApiKey', e.target.value)}
+            placeholder="sk-..."
+            className="w-full px-3 py-2 rounded-lg glass-dark text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
+          />
+          <p className="text-[10px] text-white/30 mt-1">両方のキーをブラウザに安全に保存できます</p>
         </section>
 
         {/* プロバイダー選択 */}
@@ -171,7 +194,7 @@ export default function Sidebar({ config, onConfigChange }) {
             ))}
           </select>
           <p className="text-[10px] text-white/30 mt-1">
-            {config.provider === 'google' ? 'Google API Key（AIza...）を使用' : 'OpenAI API Key（sk-...）を使用'}
+            上で入力済みの対応キーが自動で使われます
           </p>
         </section>
 

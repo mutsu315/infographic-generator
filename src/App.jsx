@@ -8,7 +8,8 @@ import { getAllCharacterImages } from './lib/storage'
 
 export default function App() {
   const [config, setConfig] = useState({
-    apiKey: '',
+    googleApiKey: '',
+    openaiApiKey: '',
     provider: 'google',
     model: 'imagen-3.0-generate-002',
     aspectRatio: '16:9',
@@ -26,9 +27,12 @@ export default function App() {
     setConfig((prev) => ({ ...prev, ...patch }))
   }, [])
 
+  // 選択中プロバイダーのAPIキーを取得
+  const activeApiKey = config.provider === 'google' ? config.googleApiKey : config.openaiApiKey
+
   const handleGenerate = async () => {
-    if (!config.apiKey) {
-      setStatusMessage('APIキーを入力してください')
+    if (!activeApiKey) {
+      setStatusMessage(`${config.provider === 'google' ? 'Google' : 'OpenAI'} APIキーを入力してください`)
       setTimeout(() => setStatusMessage(''), 3000)
       return
     }
@@ -61,7 +65,7 @@ export default function App() {
 
     try {
       await runPipeline({
-        apiKey: config.apiKey,
+        apiKey: activeApiKey,
         script,
         aspectRatio,
         model: config.model,
