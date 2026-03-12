@@ -50,7 +50,7 @@ export default function App() {
       const chars = await getAllCharacterImages()
       const selected = chars.find((c) => c.id === config.selectedCharacterId)
       if (selected) {
-        characterDescription = `このキャラクター画像と同じキャラクターを、インフォグラフィック内に登場させてください。キャラクターの外見・服装・髪型を忠実に再現してください。`
+        characterDescription = `添付のキャラクター画像（キャラクターシートの場合あり）を参照し、このキャラクターの外見的特徴を正確に読み取ってください。生成する各画像では、キャラクターの外見を維持したまま、スクリプトの文脈に合った自然な表情・ポーズで登場させてください。`
         characterImageDataUrl = selected.dataUrl
       }
     }

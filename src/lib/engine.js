@@ -32,6 +32,16 @@ export function parseScript(text) {
 // ── YAMLプロンプト生成 ───────────────────────────────────
 
 function buildYamlPromptRequest(section, characterDescription, aspectRatio) {
+  const characterBlock = characterDescription
+    ? `
+重要 - キャラクター指示:
+- 添付されたキャラクター画像（キャラクターシートの場合あり）からキャラクターの外見的特徴（髪型、髪色、目の色、服装、体型、特徴的なアクセサリー等）を正確に読み取ってください。
+- character_appearance にキャラクターの外見を詳細に記述してください（画像生成モデルが参照画像なしでも再現できるレベルで）。
+- character_pose_expression には、スクリプトの文脈に合った表情とポーズを指定してください。同じポーズの使い回しは避けてください。
+  例: 驚いている場面→目を見開いて口を開けた表情、解説場面→人差し指を立てて説明するポーズ、困っている場面→腕を組んで困り顔
+- キャラクターの画風（アニメ調、リアル調等）もcharacter_appearanceに含めてください。`
+    : ''
+
   const systemPrompt = `あなたはインフォグラフィック画像のプロンプト設計の専門家です。
 与えられたスクリプトのコンテキストから、視覚的に魅力的なインフォグラフィック画像を生成するためのプロンプトをYAML形式で出力してください。
 
@@ -42,16 +52,17 @@ image_prompt_template:
   visual_style: "ビジュアルスタイル（例: フラットデザイン、3Dイラスト等）"
   color_palette: ["#hex1", "#hex2", "#hex3"]
   text_overlay: "画像に含めるテキスト（あれば）"
-  character_placement: "キャラクターの配置と表情"
+  character_appearance: "キャラクターの外見的特徴の詳細（髪型、髪色、服装、画風など）"
+  character_pose_expression: "文脈に合ったポーズと表情の具体的な指示"
+  character_placement: "画面内でのキャラクターの位置とサイズ"
   layout: "レイアウト構成の説明"
   mood: "全体の雰囲気"
   aspect_ratio: "${aspectRatio}"
 \`\`\`
 
 注意事項:
-- キャラクターが指定されている場合、キャラクターの特徴を反映してください
 - インフォグラフィックとして情報が伝わるデザインを心がけてください
-- アスペクト比 ${aspectRatio} に最適化されたレイアウトにしてください`
+- アスペクト比 ${aspectRatio} に最適化されたレイアウトにしてください${characterBlock}`
 
   const userMessage = `以下のスクリプトコンテキストに基づいて、インフォグラフィック画像のYAMLプロンプトを生成してください。
 
@@ -61,7 +72,7 @@ ${section.contextBefore || '（なし）'}
 【直後のテキスト】
 ${section.contextAfter || '（なし）'}
 
-${characterDescription ? `【キャラクター情報】\n${characterDescription}` : ''}
+${characterDescription ? `【キャラクター情報】\n${characterDescription}\n※添付画像がキャラクターの参照画像です。外見的特徴を読み取ってYAMLに反映してください。` : ''}
 
 YAMLプロンプトのみを出力してください。`
 
@@ -87,7 +98,9 @@ function yamlToImagePrompt(yamlText) {
   const parts = []
   if (fields.scene_description) parts.push(fields.scene_description)
   if (fields.visual_style) parts.push(`Style: ${fields.visual_style}`)
-  if (fields.character_placement) parts.push(`Character: ${fields.character_placement}`)
+  if (fields.character_appearance) parts.push(`Character appearance: ${fields.character_appearance}`)
+  if (fields.character_pose_expression) parts.push(`Pose and expression: ${fields.character_pose_expression}`)
+  if (fields.character_placement) parts.push(`Character placement: ${fields.character_placement}`)
   if (fields.layout) parts.push(`Layout: ${fields.layout}`)
   if (fields.mood) parts.push(`Mood: ${fields.mood}`)
   if (fields.text_overlay) parts.push(`Text: ${fields.text_overlay}`)
@@ -290,7 +303,7 @@ async function geminiGenerateContentImage(apiKey, prompt, aspectRatio, model, ch
   // キャラクター画像があれば参照画像として添付
   if (characterImageDataUrl) {
     const { mimeType, base64 } = parseDataUrl(characterImageDataUrl)
-    parts.unshift({ text: 'Use this character image as reference. The character in the generated image must match this character\'s appearance, outfit, and hairstyle exactly:' })
+    parts.unshift({ text: `Below is a character reference image (may be a character sheet with multiple views). Study this character's visual design carefully — hairstyle, hair color, eye color, outfit, accessories, art style, and body proportions. Then generate the infographic image featuring this SAME character but in the pose and expression described in the prompt below. Do NOT simply copy the reference image — adapt the character naturally into the scene.` })
     parts.splice(1, 0, { inlineData: { mimeType, data: base64 } })
   }
 
