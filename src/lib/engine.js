@@ -97,6 +97,15 @@ function yamlToImagePrompt(yamlText) {
 
 // ── プロバイダー自動検出 ─────────────────────────────────
 
+// ── ユーティリティ ───────────────────────────────────────
+
+/** data:image/png;base64,xxxx → { mimeType, base64 } に分解 */
+function parseDataUrl(dataUrl) {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/)
+  if (!match) return { mimeType: 'image/png', base64: dataUrl }
+  return { mimeType: match[1], base64: match[2] }
+}
+
 export function detectProvider(apiKey) {
   if (!apiKey) return 'openai'
   if (apiKey.startsWith('AIza')) return 'google'
@@ -175,18 +184,25 @@ async function openaiGenerateImage(apiKey, prompt, aspectRatio, model, signal) {
 
 // ── Google Gemini + Imagen API ───────────────────────────
 
-async function geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, signal) {
+async function geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, characterImageDataUrl, signal) {
   const { systemPrompt, userMessage } = buildYamlPromptRequest(section, characterDescription, aspectRatio)
 
-  const geminiModel = llmModel || 'gemini-2.0-flash-lite'
+  const geminiModel = llmModel || 'gemini-2.5-flash'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`
+
+  // ユーザーメッセージのパーツ（テキスト＋オプションでキャラクター画像）
+  const userParts = [{ text: userMessage }]
+  if (characterImageDataUrl) {
+    const { mimeType, base64 } = parseDataUrl(characterImageDataUrl)
+    userParts.push({ inlineData: { mimeType, data: base64 } })
+  }
 
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ parts: [{ text: userMessage }] }],
+      contents: [{ parts: userParts }],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 1000,
@@ -213,11 +229,11 @@ function isGeminiGenerateContentModel(model) {
   return model.startsWith('gemini-')
 }
 
-async function googleGenerateImage(apiKey, prompt, aspectRatio, model, signal) {
+async function googleGenerateImage(apiKey, prompt, aspectRatio, model, characterImageDataUrl, signal) {
   const targetModel = model || 'imagen-3.0-generate-002'
 
   if (isGeminiGenerateContentModel(targetModel)) {
-    return geminiGenerateContentImage(apiKey, prompt, aspectRatio, targetModel, signal)
+    return geminiGenerateContentImage(apiKey, prompt, aspectRatio, targetModel, characterImageDataUrl, signal)
   }
 
   // predict エンドポイント（Imagen 3, Imagen 3 Fast, Nano Banana Pro 2 等）
@@ -264,16 +280,25 @@ async function predictApiImage(apiKey, prompt, aspectRatio, model, signal) {
 /**
  * Gemini generateContent (responseModalities=IMAGE) による画像生成
  */
-async function geminiGenerateContentImage(apiKey, prompt, aspectRatio, model, signal) {
+async function geminiGenerateContentImage(apiKey, prompt, aspectRatio, model, characterImageDataUrl, signal) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+
+  const parts = [
+    { text: `Generate an infographic image based on the following description. Aspect ratio: ${aspectRatio}.\n\n${prompt.slice(0, 3000)}` }
+  ]
+
+  // キャラクター画像があれば参照画像として添付
+  if (characterImageDataUrl) {
+    const { mimeType, base64 } = parseDataUrl(characterImageDataUrl)
+    parts.unshift({ text: 'Use this character image as reference. The character in the generated image must match this character\'s appearance, outfit, and hairstyle exactly:' })
+    parts.splice(1, 0, { inlineData: { mimeType, data: base64 } })
+  }
 
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{
-        parts: [{ text: `Generate an infographic image: ${prompt.slice(0, 3000)}. Aspect ratio: ${aspectRatio}` }]
-      }],
+      contents: [{ parts }],
       generationConfig: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
@@ -310,6 +335,7 @@ export async function runPipeline({
   llmModel = '',
   provider = '',
   characterDescription = '',
+  characterImageDataUrl = null,
   abortController,
   onProgress,
 }) {
@@ -342,7 +368,7 @@ export async function runPipeline({
     let yamlPrompt
     try {
       if (detectedProvider === 'google') {
-        yamlPrompt = await geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, signal)
+        yamlPrompt = await geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, characterImageDataUrl, signal)
       } else {
         yamlPrompt = await openaiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, signal)
       }
@@ -371,7 +397,7 @@ export async function runPipeline({
     try {
       let result
       if (detectedProvider === 'google') {
-        result = await googleGenerateImage(apiKey, imagePrompt, aspectRatio, model, signal)
+        result = await googleGenerateImage(apiKey, imagePrompt, aspectRatio, model, characterImageDataUrl, signal)
       } else {
         result = await openaiGenerateImage(apiKey, imagePrompt, aspectRatio, model, signal)
       }

@@ -43,13 +43,15 @@ export default function App() {
       return
     }
 
-    // キャラクター情報を取得
+    // キャラクター情報を取得（画像データ含む）
     let characterDescription = ''
+    let characterImageDataUrl = null
     if (config.selectedCharacterId) {
       const chars = await getAllCharacterImages()
       const selected = chars.find((c) => c.id === config.selectedCharacterId)
       if (selected) {
-        characterDescription = `キャラクター名: ${selected.name}（アップロード済み画像あり）`
+        characterDescription = `このキャラクター画像と同じキャラクターを、インフォグラフィック内に登場させてください。キャラクターの外見・服装・髪型を忠実に再現してください。`
+        characterImageDataUrl = selected.dataUrl
       }
     }
 
@@ -73,6 +75,7 @@ export default function App() {
         llmModel: config.llmModel,
         provider: config.provider,
         characterDescription,
+        characterImageDataUrl,
         abortController: controller,
         onProgress: (event) => {
           switch (event.type) {
