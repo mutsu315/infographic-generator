@@ -62,7 +62,7 @@ image_prompt_template:
 
 注意事項:
 - スクリプトの内容が視覚的に伝わるイラストを心がけてください
-- 画像内に不要なタイトル文字やテキストラベルを入れないでください（text_overlayで明示指定された場合のみ可）
+- スクリプトの内容に関連するキーワードや数字などのテキストを画像内に効果的に配置してください（text_overlayに指定）
 - アスペクト比 ${aspectRatio} に最適化されたレイアウトにしてください${characterBlock}`
 
   const userMessage = `以下のスクリプトコンテキストに基づいて、イラスト画像のYAMLプロンプトを生成してください。
@@ -298,7 +298,7 @@ async function geminiGenerateContentImage(apiKey, prompt, aspectRatio, model, ch
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
   const parts = [
-    { text: `Generate an illustration image based on the following description. Do NOT add any title text, labels, or watermarks on the image unless explicitly specified in the prompt. Aspect ratio: ${aspectRatio}.\n\n${prompt.slice(0, 3000)}` }
+    { text: `Generate an illustration image based on the following description. Include relevant text overlays as specified in the prompt. Aspect ratio: ${aspectRatio}.\n\n${prompt.slice(0, 3000)}` }
   ]
 
   // キャラクター画像があれば参照画像として添付
