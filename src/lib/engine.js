@@ -179,7 +179,7 @@ async function geminiGenerateYaml(apiKey, section, characterDescription, aspectR
   const { systemPrompt, userMessage } = buildYamlPromptRequest(section, characterDescription, aspectRatio)
 
   // Gemini API の generateContent エンドポイント
-  const geminiModel = 'gemini-2.0-flash'
+  const geminiModel = 'gemini-2.0-flash-lite'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`
 
   const res = await fetch(url, {
