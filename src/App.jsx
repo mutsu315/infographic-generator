@@ -135,7 +135,7 @@ export default function App() {
         <header className="flex items-center gap-3">
           <Sparkles size={24} className="text-violet-400" />
           <h1 className="text-xl font-bold tracking-tight">
-            インフォグラフィック生成システム
+            イラスト生成システム
           </h1>
         </header>
 

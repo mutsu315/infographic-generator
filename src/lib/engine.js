@@ -42,8 +42,8 @@ function buildYamlPromptRequest(section, characterDescription, aspectRatio) {
 - キャラクターの画風（アニメ調、リアル調等）もcharacter_appearanceに含めてください。`
     : ''
 
-  const systemPrompt = `あなたはインフォグラフィック画像のプロンプト設計の専門家です。
-与えられたスクリプトのコンテキストから、視覚的に魅力的なインフォグラフィック画像を生成するためのプロンプトをYAML形式で出力してください。
+  const systemPrompt = `あなたはイラスト画像のプロンプト設計の専門家です。
+与えられたスクリプトのコンテキストから、視覚的に魅力的なイラスト画像を生成するためのプロンプトをYAML形式で出力してください。
 
 出力フォーマット（YAML）:
 \`\`\`yaml
@@ -61,10 +61,11 @@ image_prompt_template:
 \`\`\`
 
 注意事項:
-- インフォグラフィックとして情報が伝わるデザインを心がけてください
+- スクリプトの内容が視覚的に伝わるイラストを心がけてください
+- 画像内に不要なタイトル文字やテキストラベルを入れないでください（text_overlayで明示指定された場合のみ可）
 - アスペクト比 ${aspectRatio} に最適化されたレイアウトにしてください${characterBlock}`
 
-  const userMessage = `以下のスクリプトコンテキストに基づいて、インフォグラフィック画像のYAMLプロンプトを生成してください。
+  const userMessage = `以下のスクリプトコンテキストに基づいて、イラスト画像のYAMLプロンプトを生成してください。
 
 【直前のテキスト】
 ${section.contextBefore || '（なし）'}
@@ -297,7 +298,7 @@ async function geminiGenerateContentImage(apiKey, prompt, aspectRatio, model, ch
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
   const parts = [
-    { text: `Generate an infographic image based on the following description. Aspect ratio: ${aspectRatio}.\n\n${prompt.slice(0, 3000)}` }
+    { text: `Generate an illustration image based on the following description. Do NOT add any title text, labels, or watermarks on the image unless explicitly specified in the prompt. Aspect ratio: ${aspectRatio}.\n\n${prompt.slice(0, 3000)}` }
   ]
 
   // キャラクター画像があれば参照画像として添付
