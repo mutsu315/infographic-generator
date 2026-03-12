@@ -352,14 +352,24 @@ export default function Sidebar({ config, onConfigChange }) {
 
           {/* 選択状態の表示 */}
           {characters.length > 0 && (
-            <div className={`mb-2 px-2.5 py-1.5 rounded-lg text-[11px] ${
-              config.selectedCharacterId
-                ? 'bg-green-500/10 border border-green-500/20 text-green-300'
-                : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-300'
-            }`}>
+            <div style={{
+              marginBottom: '8px',
+              padding: '6px 10px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              border: config.selectedCharacterId
+                ? '1px solid rgba(74, 222, 128, 0.3)'
+                : '1px solid rgba(234, 179, 8, 0.3)',
+              background: config.selectedCharacterId
+                ? 'rgba(74, 222, 128, 0.1)'
+                : 'rgba(234, 179, 8, 0.1)',
+              color: config.selectedCharacterId
+                ? '#86efac'
+                : '#fde047',
+            }}>
               {config.selectedCharacterId
                 ? `✓ ${characters.find(c => c.id === config.selectedCharacterId)?.name || ''} を使用`
-                : 'キャラクター未選択 — 下から選んでください'}
+                : '⚠ キャラクター未選択 — 下から選んでください'}
             </div>
           )}
 
@@ -388,30 +398,62 @@ export default function Sidebar({ config, onConfigChange }) {
                 return (
                 <div
                   key={char.id}
-                  className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition ${
-                    isSelected
-                      ? 'ring-2 ring-green-400 bg-green-500/15'
-                      : 'glass-dark hover:bg-white/10 border border-transparent hover:border-white/10'
-                  }`}
-                  onClick={() => update('selectedCharacterId', isSelected ? null : char.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    border: isSelected ? '2px solid #4ade80' : '2px solid transparent',
+                    background: isSelected ? 'rgba(74, 222, 128, 0.15)' : 'rgba(0,0,0,0.25)',
+                  }}
+                  onClick={() => {
+                    const newId = isSelected ? null : char.id
+                    console.log('[Sidebar] キャラ選択:', char.name, 'id:', newId)
+                    onConfigChange({ selectedCharacterId: newId })
+                  }}
                 >
                   <img
                     src={char.dataUrl}
                     alt={char.name}
-                    className={`w-12 h-12 rounded-lg object-cover transition ${isSelected ? 'ring-1 ring-green-400' : 'opacity-60'}`}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '8px',
+                      objectFit: 'cover',
+                      opacity: isSelected ? 1 : 0.5,
+                      border: isSelected ? '2px solid #4ade80' : 'none',
+                    }}
                   />
-                  <div className="flex-1 min-w-0">
-                    <span className={`text-xs block truncate ${isSelected ? 'text-white' : 'text-white/50'}`}>{char.name}</span>
-                    <span className={`text-[10px] ${isSelected ? 'text-green-300 font-medium' : 'text-white/30'}`}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '12px',
+                      color: isSelected ? '#fff' : 'rgba(255,255,255,0.5)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>{char.name}</div>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: isSelected ? 600 : 400,
+                      color: isSelected ? '#4ade80' : 'rgba(255,255,255,0.3)',
+                    }}>
                       {isSelected ? '● 使用中' : 'クリックで選択'}
-                    </span>
+                    </div>
                   </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       handleDeleteCharacter(char.id)
                     }}
-                    className="p-1 rounded hover:bg-red-500/20 transition"
+                    style={{
+                      padding: '4px',
+                      borderRadius: '4px',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
                     title="削除"
                   >
                     <Trash2 size={12} className="text-red-400" />
