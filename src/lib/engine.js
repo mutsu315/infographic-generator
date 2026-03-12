@@ -325,10 +325,10 @@ async function geminiGenerateContentImage(apiKey, prompt, aspectRatio, model, ch
   }
 
   const data = await res.json()
-  const parts = data.candidates?.[0]?.content?.parts || []
+  const responseParts = data.candidates?.[0]?.content?.parts || []
 
   // inlineData(画像)を探す
-  for (const part of parts) {
+  for (const part of responseParts) {
     if (part.inlineData) {
       const dataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
       return { url: dataUrl, revisedPrompt: '' }
