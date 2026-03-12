@@ -1,5 +1,5 @@
-import React from 'react'
-import { FileText } from 'lucide-react'
+import React, { useRef } from 'react'
+import { FileText, ImagePlus } from 'lucide-react'
 
 const EXAMPLE_SCRIPT = `ここにスクリプトのテキストを入力してください。
 画像を生成したい箇所に [---IMAGE---] タグを挿入します。
@@ -21,8 +21,26 @@ AIは新たなフェーズに突入しました。
 [---IMAGE---]`
 
 export default function ScriptInput({ script, onScriptChange }) {
-  // [---IMAGE---] タグの数をカウント
+  const textareaRef = useRef(null)
   const tagCount = (script.match(/\[---?IMAGE---?\]/gi) || []).length
+
+  const insertImageTag = () => {
+    const ta = textareaRef.current
+    if (!ta) return
+
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const tag = '\n\n[---IMAGE---]\n\n'
+    const newScript = script.slice(0, start) + tag + script.slice(end)
+    onScriptChange(newScript)
+
+    // カーソルをタグ直後に移動
+    requestAnimationFrame(() => {
+      const pos = start + tag.length
+      ta.focus()
+      ta.setSelectionRange(pos, pos)
+    })
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -31,13 +49,24 @@ export default function ScriptInput({ script, onScriptChange }) {
           <FileText size={16} />
           スクリプト入力
         </label>
-        {tagCount > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300">
-            画像 {tagCount} 枚生成予定
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={insertImageTag}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 transition"
+            title="カーソル位置に [---IMAGE---] タグを挿入"
+          >
+            <ImagePlus size={13} />
+            画像タグ挿入
+          </button>
+          {tagCount > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300">
+              画像 {tagCount} 枚生成予定
+            </span>
+          )}
+        </div>
       </div>
       <textarea
+        ref={textareaRef}
         value={script}
         onChange={(e) => onScriptChange(e.target.value)}
         placeholder={EXAMPLE_SCRIPT}
