@@ -356,6 +356,15 @@ export async function runPipeline({
   const sections = parseScript(script)
   const detectedProvider = provider || detectProvider(apiKey)
 
+  console.log('[engine] pipeline start:', {
+    provider: detectedProvider,
+    model,
+    llmModel,
+    hasCharacterImage: !!characterImageDataUrl,
+    characterImageSize: characterImageDataUrl?.length || 0,
+    sections: sections.length,
+  })
+
   if (sections.length === 0) {
     throw new Error('スクリプトに [---IMAGE---] タグが見つかりませんでした。')
   }

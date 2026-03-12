@@ -129,14 +129,19 @@ export default function Sidebar({ config, onConfigChange }) {
     e.target.value = ''
   }
 
-  // 選択中のキャラが存在しない場合（削除された等）、未選択に戻す
-  // 未選択かつキャラが存在する場合は自動選択しない（ユーザーに選ばせる）
+  // キャラクター読み込み後の選択状態を整合
   useEffect(() => {
-    if (config.selectedCharacterId && characters.length > 0) {
+    if (characters.length === 0) return
+    if (config.selectedCharacterId) {
+      // 選択中のIDが存在するか確認
       const exists = characters.some(c => c.id === config.selectedCharacterId)
       if (!exists) {
-        onConfigChange({ selectedCharacterId: null })
+        // 存在しなければ最初のキャラを自動選択
+        onConfigChange({ selectedCharacterId: characters[0].id })
       }
+    } else {
+      // 未選択なら最初のキャラを自動選択
+      onConfigChange({ selectedCharacterId: characters[0].id })
     }
   }, [characters])
 

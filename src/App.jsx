@@ -46,13 +46,13 @@ export default function App() {
     // キャラクター情報を取得（画像データ含む）
     let characterDescription = ''
     let characterImageDataUrl = null
-    if (config.selectedCharacterId) {
-      const chars = await getAllCharacterImages()
-      const selected = chars.find((c) => c.id === config.selectedCharacterId)
-      if (selected) {
-        characterDescription = `添付のキャラクター画像（キャラクターシートの場合あり）を参照し、このキャラクターの外見的特徴を正確に読み取ってください。生成する各画像では、キャラクターの外見を維持したまま、スクリプトの文脈に合った自然な表情・ポーズで登場させてください。`
-        characterImageDataUrl = selected.dataUrl
-      }
+    const chars = await getAllCharacterImages()
+    if (chars.length > 0) {
+      // 選択中のキャラを探す。未選択なら最初のキャラをフォールバック使用
+      const selected = chars.find((c) => c.id === config.selectedCharacterId) || chars[0]
+      characterDescription = `添付のキャラクター画像（キャラクターシートの場合あり）を参照し、このキャラクターの外見的特徴を正確に読み取ってください。生成する各画像では、キャラクターの外見を維持したまま、スクリプトの文脈に合った自然な表情・ポーズで登場させてください。`
+      characterImageDataUrl = selected.dataUrl
+      console.log('[infographic] キャラクター画像使用:', selected.name, 'dataUrl length:', selected.dataUrl?.length)
     }
 
     const aspectRatio = config.aspectRatio === 'custom'
@@ -61,7 +61,10 @@ export default function App() {
 
     setIsGenerating(true)
     setResults([])
-    setStatusMessage('生成を開始しています...')
+    setStatusMessage(characterImageDataUrl
+      ? '生成を開始しています...（キャラクター画像あり）'
+      : '生成を開始しています...（キャラクター画像なし）'
+    )
 
     const controller = new AbortController()
     abortControllerRef.current = controller
