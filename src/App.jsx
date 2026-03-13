@@ -147,11 +147,16 @@ export default function App() {
       {/* メインエリア */}
       <div className="flex-1 flex flex-col p-6 gap-4 overflow-hidden">
         {/* タイトル */}
-        <header className="flex items-center gap-3">
-          <Sparkles size={24} className="text-violet-400" />
-          <h1 className="text-xl font-bold tracking-tight">
-            イラスト生成システム
-          </h1>
+        <header>
+          <div className="flex items-center gap-3">
+            <Sparkles size={24} className="text-violet-400" />
+            <h1 className="text-xl font-bold tracking-tight">
+              イラスト生成システム
+            </h1>
+          </div>
+          <p className="text-xs text-white/50 mt-1 ml-9">
+            台本の文脈に合ったイラスト画像を自動生成します。テキストは含まれません。
+          </p>
         </header>
 
         {/* コンテンツ: 上下分割 */}
