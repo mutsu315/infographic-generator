@@ -86,6 +86,11 @@ export default function Sidebar({ config, onConfigChange }) {
       localStorage.setItem('ig-char-roles', JSON.stringify(config.characterRoles))
     }
   }, [config.characterRoles])
+  useEffect(() => {
+    if (config.globalInstruction != null) {
+      localStorage.setItem('ig-global-instruction', config.globalInstruction)
+    }
+  }, [config.globalInstruction])
 
   // 初回ロード時にlocalStorageから設定を復元
   useEffect(() => {
@@ -96,6 +101,7 @@ export default function Sidebar({ config, onConfigChange }) {
     const savedLlmModel = localStorage.getItem('ig-llm-model')
     const savedCharIds = JSON.parse(localStorage.getItem('ig-selected-chars') || '[]')
     const savedCharRoles = JSON.parse(localStorage.getItem('ig-char-roles') || '{}')
+    const savedGlobalInstruction = localStorage.getItem('ig-global-instruction') || ''
     onConfigChange({
       googleApiKey: savedGoogleKey,
       openaiApiKey: savedOpenaiKey,
@@ -104,6 +110,7 @@ export default function Sidebar({ config, onConfigChange }) {
       provider: savedProvider,
       selectedCharacterIds: savedCharIds,
       characterRoles: savedCharRoles,
+      globalInstruction: savedGlobalInstruction,
     })
   }, [])
 
@@ -361,6 +368,22 @@ export default function Sidebar({ config, onConfigChange }) {
           )}
         </section>
 
+        {/* 全体指示 */}
+        <section>
+          <label className="flex items-center gap-2 text-xs font-medium text-violet-300 mb-2">
+            <Cpu size={14} />
+            画像生成への全体指示
+          </label>
+          <textarea
+            value={config.globalInstruction || ''}
+            onChange={(e) => update('globalInstruction', e.target.value)}
+            placeholder="例: 全体的に明るいトーンで、背景はシンプルにしてください"
+            rows={3}
+            className="w-full px-3 py-2 rounded-lg glass-dark text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition resize-none"
+          />
+          <p className="text-[10px] text-white/30 mt-1">全画像に共通で適用される指示（任意）</p>
+        </section>
+
         {/* キャラクター画像 */}
         <section>
           <label className="flex items-center gap-2 text-xs font-medium text-violet-300 mb-2">
@@ -477,7 +500,7 @@ export default function Sidebar({ config, onConfigChange }) {
                       value={role}
                       onChange={(e) => updateCharacterRole(char.id, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      placeholder="役割・指示（例: 先生役、生徒役、解説者）"
+                      placeholder="例: 先生役、画面左で解説ポーズ"
                       style={{
                         width: '100%',
                         marginTop: '4px',
