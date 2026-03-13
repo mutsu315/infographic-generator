@@ -77,12 +77,15 @@ export default function Sidebar({ config, onConfigChange }) {
     if (config.provider) localStorage.setItem('ig-provider', config.provider)
   }, [config.provider])
   useEffect(() => {
-    if (config.selectedCharacterId) {
-      localStorage.setItem('ig-selected-char', config.selectedCharacterId)
-    } else if (config.selectedCharacterId === null) {
-      localStorage.removeItem('ig-selected-char')
+    if (config.selectedCharacterIds) {
+      localStorage.setItem('ig-selected-chars', JSON.stringify(config.selectedCharacterIds))
     }
-  }, [config.selectedCharacterId])
+  }, [config.selectedCharacterIds])
+  useEffect(() => {
+    if (config.characterRoles) {
+      localStorage.setItem('ig-char-roles', JSON.stringify(config.characterRoles))
+    }
+  }, [config.characterRoles])
 
   // 初回ロード時にlocalStorageから設定を復元
   useEffect(() => {
@@ -91,14 +94,16 @@ export default function Sidebar({ config, onConfigChange }) {
     const savedOpenaiKey = localStorage.getItem('ig-api-key-openai') || ''
     const savedModel = localStorage.getItem('ig-model')
     const savedLlmModel = localStorage.getItem('ig-llm-model')
-    const savedCharId = localStorage.getItem('ig-selected-char')
+    const savedCharIds = JSON.parse(localStorage.getItem('ig-selected-chars') || '[]')
+    const savedCharRoles = JSON.parse(localStorage.getItem('ig-char-roles') || '{}')
     onConfigChange({
       googleApiKey: savedGoogleKey,
       openaiApiKey: savedOpenaiKey,
       model: savedModel || config.model,
       llmModel: savedLlmModel || config.llmModel,
       provider: savedProvider,
-      selectedCharacterId: savedCharId || null,
+      selectedCharacterIds: savedCharIds,
+      characterRoles: savedCharRoles,
     })
   }, [])
 
@@ -122,36 +127,49 @@ export default function Sidebar({ config, onConfigChange }) {
       await saveCharacterImage(id, file.name, dataUrl)
       const updated = await getAllCharacterImages()
       setCharacters(updated)
-      // アップロード直後に自動選択
-      onConfigChange({ selectedCharacterId: id })
+      onConfigChange({ selectedCharacterIds: [...(config.selectedCharacterIds || []), id] })
     }
     reader.readAsDataURL(file)
     e.target.value = ''
   }
 
-  // キャラクター読み込み後の選択状態を整合
   useEffect(() => {
     if (characters.length === 0) return
-    if (config.selectedCharacterId) {
-      // 選択中のIDが存在するか確認
-      const exists = characters.some(c => c.id === config.selectedCharacterId)
-      if (!exists) {
-        // 存在しなければ最初のキャラを自動選択
-        onConfigChange({ selectedCharacterId: characters[0].id })
-      }
+    const ids = config.selectedCharacterIds || []
+    if (ids.length === 0) {
+      onConfigChange({ selectedCharacterIds: [characters[0].id] })
     } else {
-      // 未選択なら最初のキャラを自動選択
-      onConfigChange({ selectedCharacterId: characters[0].id })
+      const validIds = ids.filter(id => characters.some(c => c.id === id))
+      if (validIds.length === 0) {
+        onConfigChange({ selectedCharacterIds: [characters[0].id] })
+      } else if (validIds.length !== ids.length) {
+        onConfigChange({ selectedCharacterIds: validIds })
+      }
     }
   }, [characters])
+
+  const handleToggleCharacter = (id) => {
+    const current = config.selectedCharacterIds || []
+    if (current.includes(id)) {
+      if (current.length > 1) {
+        onConfigChange({ selectedCharacterIds: current.filter(cid => cid !== id) })
+      }
+    } else {
+      onConfigChange({ selectedCharacterIds: [...current, id] })
+    }
+  }
+
+  const updateCharacterRole = (id, role) => {
+    const roles = { ...(config.characterRoles || {}), [id]: role }
+    onConfigChange({ characterRoles: roles })
+  }
 
   const handleDeleteCharacter = async (id) => {
     await deleteCharacterImage(id)
     const updated = await getAllCharacterImages()
     setCharacters(updated)
-    if (config.selectedCharacterId === id) {
-      onConfigChange({ selectedCharacterId: null })
-    }
+    const newIds = (config.selectedCharacterIds || []).filter(cid => cid !== id)
+    onConfigChange({ selectedCharacterIds: newIds.length > 0 ? newIds : (updated.length > 0 ? [updated[0].id] : []) })
   }
 
   const update = (key, value) => onConfigChange({ [key]: value })
@@ -357,19 +375,17 @@ export default function Sidebar({ config, onConfigChange }) {
               padding: '6px 10px',
               borderRadius: '8px',
               fontSize: '11px',
-              border: config.selectedCharacterId
-                ? '1px solid rgba(74, 222, 128, 0.3)'
-                : '1px solid rgba(234, 179, 8, 0.3)',
-              background: config.selectedCharacterId
-                ? 'rgba(74, 222, 128, 0.1)'
-                : 'rgba(234, 179, 8, 0.1)',
-              color: config.selectedCharacterId
-                ? '#86efac'
-                : '#fde047',
+              border: '1px solid rgba(74, 222, 128, 0.3)',
+              background: 'rgba(74, 222, 128, 0.1)',
+              color: '#86efac',
             }}>
-              {config.selectedCharacterId
-                ? `✓ ${characters.find(c => c.id === config.selectedCharacterId)?.name || ''} を使用`
-                : '⚠ キャラクター未選択 — 下から選んでください'}
+              {(() => {
+                const ids = config.selectedCharacterIds || []
+                const names = ids.map(id => characters.find(c => c.id === id)?.name).filter(Boolean)
+                return names.length > 0
+                  ? `✓ ${names.join('、')} を使用（${names.length}体）`
+                  : '⚠ キャラクター未選択'
+              })()}
             </div>
           )}
 
@@ -388,76 +404,93 @@ export default function Sidebar({ config, onConfigChange }) {
             <Upload size={14} />
             画像を追加
           </button>
-          <p className="text-[10px] text-white/30 mt-1">IndexedDBに永続保存 / クリックで選択切替</p>
+          <p className="text-[10px] text-white/30 mt-1">IndexedDBに永続保存 / 複数選択可 / 各キャラに役割指定可</p>
 
-          {/* 保存済みキャラクター一覧 */}
           {characters.length > 0 && (
             <div className="mt-3 space-y-2">
               {characters.map((char) => {
-                const isSelected = config.selectedCharacterId === char.id
+                const isSelected = (config.selectedCharacterIds || []).includes(char.id)
+                const role = (config.characterRoles || {})[char.id] || ''
                 return (
-                <div
-                  key={char.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    border: isSelected ? '2px solid #4ade80' : '2px solid transparent',
-                    background: isSelected ? 'rgba(74, 222, 128, 0.15)' : 'rgba(0,0,0,0.25)',
-                  }}
-                  onClick={() => {
-                    const newId = isSelected ? null : char.id
-                    console.log('[Sidebar] キャラ選択:', char.name, 'id:', newId)
-                    onConfigChange({ selectedCharacterId: newId })
-                  }}
-                >
-                  <img
-                    src={char.dataUrl}
-                    alt={char.name}
+                <div key={char.id}>
+                  <div
                     style={{
-                      width: '48px',
-                      height: '48px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px',
                       borderRadius: '8px',
-                      objectFit: 'cover',
-                      opacity: isSelected ? 1 : 0.5,
-                      border: isSelected ? '2px solid #4ade80' : 'none',
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: '12px',
-                      color: isSelected ? '#fff' : 'rgba(255,255,255,0.5)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>{char.name}</div>
-                    <div style={{
-                      fontSize: '10px',
-                      fontWeight: isSelected ? 600 : 400,
-                      color: isSelected ? '#4ade80' : 'rgba(255,255,255,0.3)',
-                    }}>
-                      {isSelected ? '● 使用中' : 'クリックで選択'}
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteCharacter(char.id)
-                    }}
-                    style={{
-                      padding: '4px',
-                      borderRadius: '4px',
-                      background: 'transparent',
-                      border: 'none',
                       cursor: 'pointer',
+                      border: isSelected ? '2px solid #4ade80' : '2px solid transparent',
+                      background: isSelected ? 'rgba(74, 222, 128, 0.15)' : 'rgba(0,0,0,0.25)',
                     }}
-                    title="削除"
+                    onClick={() => handleToggleCharacter(char.id)}
                   >
-                    <Trash2 size={12} className="text-red-400" />
-                  </button>
+                    <img
+                      src={char.dataUrl}
+                      alt={char.name}
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '8px',
+                        objectFit: 'cover',
+                        opacity: isSelected ? 1 : 0.5,
+                        border: isSelected ? '2px solid #4ade80' : 'none',
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '12px',
+                        color: isSelected ? '#fff' : 'rgba(255,255,255,0.5)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>{char.name}</div>
+                      <div style={{
+                        fontSize: '10px',
+                        fontWeight: isSelected ? 600 : 400,
+                        color: isSelected ? '#4ade80' : 'rgba(255,255,255,0.3)',
+                      }}>
+                        {isSelected ? '● 選択中' : 'クリックで選択'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteCharacter(char.id)
+                      }}
+                      style={{
+                        padding: '4px',
+                        borderRadius: '4px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                      title="削除"
+                    >
+                      <Trash2 size={12} className="text-red-400" />
+                    </button>
+                  </div>
+                  {isSelected && (
+                    <input
+                      type="text"
+                      value={role}
+                      onChange={(e) => updateCharacterRole(char.id, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="役割・指示（例: 先生役、生徒役、解説者）"
+                      style={{
+                        width: '100%',
+                        marginTop: '4px',
+                        padding: '6px 10px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        background: 'rgba(0,0,0,0.25)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        color: 'rgba(255,255,255,0.9)',
+                        outline: 'none',
+                      }}
+                    />
+                  )}
                 </div>
                 )
               })}

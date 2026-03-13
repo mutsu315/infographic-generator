@@ -198,17 +198,18 @@ async function openaiGenerateImage(apiKey, prompt, aspectRatio, model, signal) {
 
 // ── Google Gemini + Imagen API ───────────────────────────
 
-async function geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, characterImageDataUrl, signal) {
+async function geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, characterImageDataUrls, signal) {
   const { systemPrompt, userMessage } = buildYamlPromptRequest(section, characterDescription, aspectRatio)
 
   const geminiModel = llmModel || 'gemini-2.5-flash'
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`
 
-  // ユーザーメッセージのパーツ（テキスト＋オプションでキャラクター画像）
   const userParts = [{ text: userMessage }]
-  if (characterImageDataUrl) {
-    const { mimeType, base64 } = parseDataUrl(characterImageDataUrl)
-    userParts.push({ inlineData: { mimeType, data: base64 } })
+  if (characterImageDataUrls && characterImageDataUrls.length > 0) {
+    for (const dataUrl of characterImageDataUrls) {
+      const { mimeType, base64 } = parseDataUrl(dataUrl)
+      userParts.push({ inlineData: { mimeType, data: base64 } })
+    }
   }
 
   const res = await fetch(url, {
@@ -243,11 +244,11 @@ function isGeminiGenerateContentModel(model) {
   return model.startsWith('gemini-')
 }
 
-async function googleGenerateImage(apiKey, prompt, aspectRatio, model, characterImageDataUrl, signal) {
+async function googleGenerateImage(apiKey, prompt, aspectRatio, model, characterImageDataUrls, signal) {
   const targetModel = model || 'imagen-3.0-generate-002'
 
   if (isGeminiGenerateContentModel(targetModel)) {
-    return geminiGenerateContentImage(apiKey, prompt, aspectRatio, targetModel, characterImageDataUrl, signal)
+    return geminiGenerateContentImage(apiKey, prompt, aspectRatio, targetModel, characterImageDataUrls, signal)
   }
 
   // predict エンドポイント（Imagen 3, Imagen 3 Fast, Nano Banana Pro 2 等）
@@ -294,18 +295,22 @@ async function predictApiImage(apiKey, prompt, aspectRatio, model, signal) {
 /**
  * Gemini generateContent (responseModalities=IMAGE) による画像生成
  */
-async function geminiGenerateContentImage(apiKey, prompt, aspectRatio, model, characterImageDataUrl, signal) {
+async function geminiGenerateContentImage(apiKey, prompt, aspectRatio, model, characterImageDataUrls, signal) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
   const parts = [
     { text: `Generate an illustration image based on the following description. Include relevant text overlays as specified in the prompt. Aspect ratio: ${aspectRatio}.\n\n${prompt.slice(0, 3000)}` }
   ]
 
-  // キャラクター画像があれば参照画像として添付
-  if (characterImageDataUrl) {
-    const { mimeType, base64 } = parseDataUrl(characterImageDataUrl)
-    parts.unshift({ text: `Below is a character reference image (may be a character sheet with multiple views). Study this character's visual design carefully — hairstyle, hair color, eye color, outfit, accessories, art style, and body proportions. Then generate the infographic image featuring this SAME character but in the pose and expression described in the prompt below. Do NOT simply copy the reference image — adapt the character naturally into the scene.` })
-    parts.splice(1, 0, { inlineData: { mimeType, data: base64 } })
+  if (characterImageDataUrls && characterImageDataUrls.length > 0) {
+    const refText = characterImageDataUrls.length === 1
+      ? `Below is a character reference image (may be a character sheet with multiple views). Study this character's visual design carefully — hairstyle, hair color, eye color, outfit, accessories, art style, and body proportions. Then generate the image featuring this SAME character but in the pose and expression described in the prompt below. Do NOT simply copy the reference image — adapt the character naturally into the scene.`
+      : `Below are ${characterImageDataUrls.length} character reference images. Study each character's visual design carefully. Then generate the image featuring ALL of these characters together, each in the pose and expression described in the prompt below. Do NOT simply copy the reference images — adapt each character naturally into the scene.`
+    parts.unshift({ text: refText })
+    for (let i = 0; i < characterImageDataUrls.length; i++) {
+      const { mimeType, base64 } = parseDataUrl(characterImageDataUrls[i])
+      parts.splice(1 + i, 0, { inlineData: { mimeType, data: base64 } })
+    }
   }
 
   const res = await fetch(url, {
@@ -349,7 +354,7 @@ export async function runPipeline({
   llmModel = '',
   provider = '',
   characterDescription = '',
-  characterImageDataUrl = null,
+  characterImageDataUrls = [],
   abortController,
   onProgress,
 }) {
@@ -361,8 +366,7 @@ export async function runPipeline({
     provider: detectedProvider,
     model,
     llmModel,
-    hasCharacterImage: !!characterImageDataUrl,
-    characterImageSize: characterImageDataUrl?.length || 0,
+    characterCount: characterImageDataUrls.length,
     sections: sections.length,
   })
 
@@ -391,7 +395,7 @@ export async function runPipeline({
     let yamlPrompt
     try {
       if (detectedProvider === 'google') {
-        yamlPrompt = await geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, characterImageDataUrl, signal)
+        yamlPrompt = await geminiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, characterImageDataUrls, signal)
       } else {
         yamlPrompt = await openaiGenerateYaml(apiKey, section, characterDescription, aspectRatio, llmModel, signal)
       }
@@ -420,7 +424,7 @@ export async function runPipeline({
     try {
       let result
       if (detectedProvider === 'google') {
-        result = await googleGenerateImage(apiKey, imagePrompt, aspectRatio, model, characterImageDataUrl, signal)
+        result = await googleGenerateImage(apiKey, imagePrompt, aspectRatio, model, characterImageDataUrls, signal)
       } else {
         result = await openaiGenerateImage(apiKey, imagePrompt, aspectRatio, model, signal)
       }

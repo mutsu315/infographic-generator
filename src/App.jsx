@@ -15,7 +15,8 @@ export default function App() {
     model: 'gemini-3-pro-image-preview',
     aspectRatio: '16:9',
     customAspect: '',
-    selectedCharacterId: null,
+    selectedCharacterIds: [],
+    characterRoles: {},
   })
 
   const [script, setScript] = useState('')
@@ -45,14 +46,28 @@ export default function App() {
 
     // キャラクター情報を取得（画像データ含む）
     let characterDescription = ''
-    let characterImageDataUrl = null
+    let characterImageDataUrls = []
     const chars = await getAllCharacterImages()
-    if (chars.length > 0) {
-      // 選択中のキャラを探す。未選択なら最初のキャラをフォールバック使用
-      const selected = chars.find((c) => c.id === config.selectedCharacterId) || chars[0]
-      characterDescription = `添付のキャラクター画像（キャラクターシートの場合あり）を参照し、このキャラクターの外見的特徴を正確に読み取ってください。生成する各画像では、キャラクターの外見を維持したまま、スクリプトの文脈に合った自然な表情・ポーズで登場させてください。`
-      characterImageDataUrl = selected.dataUrl
-      console.log('[infographic] キャラクター画像使用:', selected.name, 'dataUrl length:', selected.dataUrl?.length)
+    const selectedIds = config.selectedCharacterIds || []
+    if (chars.length > 0 && selectedIds.length > 0) {
+      const selectedChars = selectedIds.map(id => chars.find(c => c.id === id)).filter(Boolean)
+      if (selectedChars.length > 0) {
+        characterImageDataUrls = selectedChars.map(c => c.dataUrl)
+        const roles = config.characterRoles || {}
+        const roleDescriptions = selectedChars
+          .map((c, i) => {
+            const role = roles[c.id]?.trim()
+            return role ? `- キャラクター${i + 1}（${c.name}）: ${role}` : `- キャラクター${i + 1}（${c.name}）`
+          })
+          .join('\n')
+        const baseDesc = selectedChars.length === 1
+          ? `添付のキャラクター画像を参照し、このキャラクターの外見的特徴を正確に読み取ってください。生成する各画像では、キャラクターの外見を維持したまま、スクリプトの文脈に合った自然な表情・ポーズで登場させてください。`
+          : `添付の${selectedChars.length}枚のキャラクター画像をそれぞれ参照し、各キャラクターの外見的特徴を正確に読み取ってください。生成する各画像では、全キャラクターを登場させ、それぞれの外見を維持したまま描いてください。`
+        const hasRoles = selectedChars.some(c => roles[c.id]?.trim())
+        characterDescription = hasRoles
+          ? `${baseDesc}\n\n【キャラクター役割】\n${roleDescriptions}\n\n各キャラクターを指定された役割に合ったポーズ・表情・配置で描いてください。`
+          : baseDesc
+      }
     }
 
     const aspectRatio = config.aspectRatio === 'custom'
@@ -61,8 +76,8 @@ export default function App() {
 
     setIsGenerating(true)
     setResults([])
-    setStatusMessage(characterImageDataUrl
-      ? '生成を開始しています...（キャラクター画像あり）'
+    setStatusMessage(characterImageDataUrls.length > 0
+      ? `生成を開始しています...（キャラクター${characterImageDataUrls.length}体）`
       : '生成を開始しています...（キャラクター画像なし）'
     )
 
@@ -78,7 +93,7 @@ export default function App() {
         llmModel: config.llmModel,
         provider: config.provider,
         characterDescription,
-        characterImageDataUrl,
+        characterImageDataUrls,
         abortController: controller,
         onProgress: (event) => {
           switch (event.type) {
