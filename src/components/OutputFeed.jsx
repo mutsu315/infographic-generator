@@ -1,17 +1,12 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import { ImageIcon, Code, AlertCircle, Download, DownloadCloud } from 'lucide-react'
+import JSZip from 'jszip'
 
 /** 画像URLまたはdata URLからblobを取得してダウンロード */
 async function downloadImage(url, filename) {
   try {
-    let blob
-    if (url.startsWith('data:')) {
-      const res = await fetch(url)
-      blob = await res.blob()
-    } else {
-      const res = await fetch(url)
-      blob = await res.blob()
-    }
+    const res = await fetch(url)
+    const blob = await res.blob()
     const blobUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = blobUrl
@@ -21,20 +16,53 @@ async function downloadImage(url, filename) {
     document.body.removeChild(a)
     URL.revokeObjectURL(blobUrl)
   } catch {
-    // フォールバック: 新しいタブで開く
     window.open(url, '_blank')
   }
 }
 
-/** 一括ダウンロード（1枚ずつ少し間隔を空けて） */
-async function downloadAll(results) {
+async function downloadAllAsZip(results) {
   const images = results.filter(r => r.imageUrl && !r.error)
+  const zip = new JSZip()
+
   for (let i = 0; i < images.length; i++) {
-    await downloadImage(images[i].imageUrl, `infographic-${images[i].index + 1}.png`)
-    if (i < images.length - 1) {
-      await new Promise(r => setTimeout(r, 500))
+    const res = await fetch(images[i].imageUrl)
+    const blob = await res.blob()
+    zip.file(`illustration-${String(i + 1).padStart(2, '0')}.png`, blob)
+  }
+
+  const zipBlob = await zip.generateAsync({ type: 'blob' })
+  const blobUrl = URL.createObjectURL(zipBlob)
+  const a = document.createElement('a')
+  a.href = blobUrl
+  a.download = 'illustrations.zip'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(blobUrl)
+}
+
+function ZipDownloadButton({ results }) {
+  const [zipping, setZipping] = useState(false)
+
+  const handleClick = async () => {
+    setZipping(true)
+    try {
+      await downloadAllAsZip(results)
+    } finally {
+      setZipping(false)
     }
   }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={zipping}
+      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition disabled:opacity-50"
+    >
+      <DownloadCloud size={14} />
+      {zipping ? 'ZIP作成中...' : 'ZIPでダウンロード'}
+    </button>
+  )
 }
 
 export default function OutputFeed({ results, statusMessage }) {
@@ -65,13 +93,7 @@ export default function OutputFeed({ results, statusMessage }) {
       {successResults.length > 0 && !statusMessage && (
         <div className="flex items-center justify-between mb-3 flex-shrink-0">
           <span className="text-xs text-white/40">{successResults.length} 枚の画像を生成済み</span>
-          <button
-            onClick={() => downloadAll(results)}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition"
-          >
-            <DownloadCloud size={14} />
-            すべてダウンロード
-          </button>
+          <ZipDownloadButton results={results} />
         </div>
       )}
 
@@ -110,7 +132,7 @@ export default function OutputFeed({ results, statusMessage }) {
                       loading="lazy"
                     />
                     <button
-                      onClick={() => downloadImage(item.imageUrl, `infographic-${item.index + 1}.png`)}
+                      onClick={() => downloadImage(item.imageUrl, `illustration-${item.index + 1}.png`)}
                       className="absolute top-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 text-white text-xs opacity-0 group-hover:opacity-100 transition hover:bg-black/80"
                       title="ダウンロード"
                     >
