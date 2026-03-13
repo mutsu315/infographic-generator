@@ -20,21 +20,22 @@ async function downloadImage(url, filename) {
   }
 }
 
-async function downloadAllAsZip(results) {
+async function downloadAllAsZip(results, zipName) {
   const images = results.filter(r => r.imageUrl && !r.error)
   const zip = new JSZip()
+  const baseName = zipName.replace(/\.zip$/i, '') || 'illustrations'
 
   for (let i = 0; i < images.length; i++) {
     const res = await fetch(images[i].imageUrl)
     const blob = await res.blob()
-    zip.file(`illustration-${String(i + 1).padStart(2, '0')}.png`, blob)
+    zip.file(`${baseName}-${String(i + 1).padStart(2, '0')}.png`, blob)
   }
 
   const zipBlob = await zip.generateAsync({ type: 'blob' })
   const blobUrl = URL.createObjectURL(zipBlob)
   const a = document.createElement('a')
   a.href = blobUrl
-  a.download = 'illustrations.zip'
+  a.download = `${baseName}.zip`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
@@ -43,25 +44,36 @@ async function downloadAllAsZip(results) {
 
 function ZipDownloadButton({ results }) {
   const [zipping, setZipping] = useState(false)
+  const [zipName, setZipName] = useState('illustrations')
 
   const handleClick = async () => {
     setZipping(true)
     try {
-      await downloadAllAsZip(results)
+      await downloadAllAsZip(results, zipName)
     } finally {
       setZipping(false)
     }
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={zipping}
-      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition disabled:opacity-50"
-    >
-      <DownloadCloud size={14} />
-      {zipping ? 'ZIP作成中...' : 'ZIPでダウンロード'}
-    </button>
+    <div className="flex items-center gap-2">
+      <input
+        type="text"
+        value={zipName}
+        onChange={(e) => setZipName(e.target.value)}
+        className="px-2 py-1.5 rounded-lg glass-dark text-xs text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500/40 w-36"
+        placeholder="ファイル名"
+      />
+      <span className="text-xs text-white/30">.zip</span>
+      <button
+        onClick={handleClick}
+        disabled={zipping}
+        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition disabled:opacity-50"
+      >
+        <DownloadCloud size={14} />
+        {zipping ? 'ZIP作成中...' : 'ZIPでダウンロード'}
+      </button>
+    </div>
   )
 }
 
