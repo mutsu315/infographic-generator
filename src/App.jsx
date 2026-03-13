@@ -17,13 +17,19 @@ export default function App() {
     customAspect: '',
     selectedCharacterIds: [],
     characterRoles: {},
+    globalInstruction: '',
   })
 
-  const [script, setScript] = useState('')
+  const [script, setScript] = useState(() => localStorage.getItem('ig-script') || '')
   const [results, setResults] = useState([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
   const abortControllerRef = useRef(null)
+
+  const handleScriptChange = useCallback((value) => {
+    setScript(value)
+    localStorage.setItem('ig-script', value)
+  }, [])
 
   const handleConfigChange = useCallback((patch) => {
     setConfig((prev) => ({ ...prev, ...patch }))
@@ -171,7 +177,7 @@ export default function App() {
         <div className="flex-1 flex flex-col gap-4 min-h-0">
           {/* スクリプト入力 */}
           <div className="glass p-4 flex-shrink-0" style={{ maxHeight: '35vh' }}>
-            <ScriptInput script={script} onScriptChange={setScript} />
+            <ScriptInput script={script} onScriptChange={handleScriptChange} />
           </div>
 
           {/* 操作ボタン */}
